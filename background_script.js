@@ -49,8 +49,6 @@ const main = async () => {
       });
 
     idx--; // fix idx 1 too large afterwards
-
-    console.log("onRemoved: recentTabs", { recentTabs, idx });
   });
 
   // adds tab to recentTabs on tab change
@@ -62,7 +60,6 @@ const main = async () => {
         idx++;
       }
 
-      console.log("onActivated: recentTabs", { recentTabs, idx });
       if (activationPromise) {
         resolveActivationPromise();
         activationPromise = null;
@@ -81,8 +78,6 @@ const main = async () => {
       browser.tabs.update(recentTabs[idx].tabId, { active: true }),
     ]);
     isTraversingHistory = false;
-
-    console.log("onCommand: recentTabs", { recentTabs, idx });
   });
 };
 
