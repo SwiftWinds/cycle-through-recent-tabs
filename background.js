@@ -6,6 +6,13 @@ const getCurrentTab = async () => {
   return browser.tabs.get(tabs[0].id);
 };
 
+function* pairwise(array) {
+  for (let baseIdx = 0; baseIdx <= array.length - 2; baseIdx++) {
+    console.log(baseIdx, baseIdx + 2);
+    yield array.slice(baseIdx, baseIdx + 2);
+  }
+}
+
 const main = async () => {
   let isTraversingHistory = false;
   let idx = 0;
@@ -29,26 +36,32 @@ const main = async () => {
       await activationPromise;
     }
 
+    // we use a count because modifying idx in the for loop will mess with the
+    // if statement
+    let count = 0;
     for (const [i, tab] of recentTabs.entries()) {
-      if (tab.tabId === tabId && tab.windowId === windowId && i <= idx) {
-        idx--;
+      // i can never === idx because we wait for onActivated listener to finish
+      // before executing the onRemoved listener
+      if (tab.tabId === tabId && tab.windowId === windowId && i < idx) {
+        count++;
       }
     }
     recentTabs = recentTabs
-      .filter(tab => tab.tabId !== tabId || tab.windowId !== windowId) // remove closed tabs
-      .filter((curTab, pos, arr) => { // remove consecutive duplicates
-        const prevTab = arr[pos - 1];
-        // Always keep the 0th element as there is nothing before it
-        // Then check if each element is different from the one before it
-        if (pos === 0 ||
-          (prevTab.tabId !== curTab.tabId || prevTab.windowId !== curTab.windowId)) {
-          return true;
-        }
-        idx--;
-        return false;
-      });
+      .filter(tab => tab.tabId !== tabId || tab.windowId !== windowId); // remove closed tabs
+    idx -= count;
 
-    idx--; // fix idx 1 too large afterwards
+    for (const [prevTab, curTab] of pairwise(recentTabs)) {
+      if (prevTab.tabId === curTab.tabId && prevTab.windowId === curTab.windowId) {
+        idx--;
+      }
+    }
+    recentTabs = recentTabs.filter((curTab, pos, arr) => { // remove consecutive duplicates
+      const prevTab = arr[pos - 1];
+      // Always keep the 0th element as there is nothing before it
+      // Then check if each element is different from the one before it
+      return pos === 0 ||
+        (prevTab.tabId !== curTab.tabId || prevTab.windowId !== curTab.windowId);
+    });
   });
 
   // adds tab to recentTabs on tab change
