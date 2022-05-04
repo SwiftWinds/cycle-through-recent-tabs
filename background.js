@@ -74,17 +74,17 @@ const main = async () => {
 
   // adds tab to recentTabs on tab change
   browser.tabs.onActivated.addListener(({ tabId, windowId }) => {
-    const tabToAdd = { tabId, windowId, lastSeen: 0 };
-
     // the tab switch occurred as a result of this extension's action
     // (i.e., alt+shift+p or alt+shift+o)
     // we shouldn't treat this as a tab switch
     if (isTraversingHistory) {
       return;
     }
+
+    const tabToAdd = { tabId, windowId, lastSeen: 0 };
     const [curIdx] = findCurrentTab();
 
-    // delete all future tabs
+    // delete all future tabs because
     // you cannot go back to the future once you've altered the past
     if (curIdx !== recentTabs.length - 1) {
       recentTabs.length = curIdx + 1;
