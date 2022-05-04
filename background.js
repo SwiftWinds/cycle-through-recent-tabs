@@ -1,8 +1,8 @@
 let isTraversingHistory = false;
 
 // a list of recent tabs
-// negative lastSeen mean tabs in the future (accessed via alt+shift+p)
-// positive lastSeen mean tabs in the past (accessed via alt+shift+o)
+// negative lastSeen mean tabs in the future (access them via alt+shift+p)
+// positive lastSeen mean tabs in the past (access them via alt+shift+o)
 // 0 means the current tab
 // the larger the lastSeen, the longer it's been since the tab was accessed
 let recentTabs = [];
@@ -66,6 +66,7 @@ const main = async () => {
     }
 
     // we remove all instances of closed tab from recentTabs
+    //
     // (we cannot do binary search because it's sorted by lastSeen, not tabId
     //  or windowId)
     recentTabs = recentTabs.filter((tab) => !equals(tab, tabToRemove));
@@ -74,10 +75,17 @@ const main = async () => {
   // adds tab to recentTabs on tab change
   browser.tabs.onActivated.addListener(({ tabId, windowId }) => {
     const tabToAdd = { tabId, windowId, lastSeen: 0 };
+
+    // the tab switch occurred as a result of this extension's action
+    // (i.e., alt+shift+p or alt+shift+o)
+    // we shouldn't treat this as a tab switch
     if (isTraversingHistory) {
       return;
     }
     const [curIdx] = findCurrentTab();
+
+    // delete all future tabs
+    // you cannot go back to the future once you've altered the past
     if (curIdx !== recentTabs.length - 1) {
       recentTabs.length = curIdx + 1;
     }
@@ -85,10 +93,12 @@ const main = async () => {
     // we want to remove any instances of the newly activate tab from our
     // array because we'll append it to the end of the array later with
     // lastSeen = 0
+    //
     // (we cannot do binary search because it's sorted by lastSeen, not tabId
     //  or windowId)
     recentTabs = recentTabs.filter((tab) => !equals(tab, tabToAdd));
 
+    // all tabs have aged by one
     for (const tab of recentTabs) {
       tab.lastSeen++;
     }
@@ -96,25 +106,36 @@ const main = async () => {
     recentTabs.push(tabToAdd);
 
     if (activationPromise) {
+      // we tell the onRemoved listener that the onActivated listener has
+      // finished and that it can continue
       resolveActivationPromise();
       activationPromise = null;
     }
   });
 
+  // alt+shift+o or alt+shift+p was pressed. We traverse history
   browser.commands.onCommand.addListener(async (command) => {
     isTraversingHistory = true;
     const [curIdx] = findCurrentTab();
     let newIdx;
+
+    // check bounds
     if (command === "go-back" && curIdx > 0) {
       newIdx = curIdx - 1;
     } else if (command === "go-forward" && curIdx < recentTabs.length - 1) {
       newIdx = curIdx + 1;
     }
+
     if (newIdx !== undefined) {
       const prevLastSeen = recentTabs[newIdx].lastSeen;
+
+      // we center all tabs around the tab we've traversed in time to,
+      // setting this new tab to lastSeen = 0
       for (const tab of recentTabs) {
         tab.lastSeen -= prevLastSeen;
       }
+
+      // switch to the tab
       await Promise.all([
         browser.windows.update(recentTabs[newIdx].windowId, { focused: true }),
         browser.tabs.update(recentTabs[newIdx].tabId, { active: true }),
