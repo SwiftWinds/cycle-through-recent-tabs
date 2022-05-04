@@ -1,10 +1,10 @@
 let isTraversingHistory = false;
 
 // a list of recent tabs
-// negative lastSeen mean tabs in the future (access them via alt+shift+p)
-// positive lastSeen mean tabs in the past (access them via alt+shift+o)
-// 0 means the current tab
-// the larger the lastSeen, the longer it's been since the tab was accessed
+// positive accessTime mean tabs in the future (access them via alt+shift+p)
+// negative accessTime mean tabs in the past (access them via alt+shift+o)
+// 0 means the present (current) tab
+// the smaller the accessTime, the longer it's been since the tab was accessed
 let recentTabs = [];
 
 // we wait for onActivated listener to finish before executing the onRemoved listener
@@ -21,7 +21,7 @@ const getCurrentTab = async () => {
 };
 
 // binary search for current tab in recentTabs
-// (current tab is the one where lastSeen === 0)
+// (current tab is the one where accessTime === 0)
 const findCurrentTab = () => {
   let start = 0;
   let end = recentTabs.length - 1;
@@ -29,13 +29,13 @@ const findCurrentTab = () => {
   while (start <= end) {
     let mid = Math.floor((start + end) / 2);
 
-    const { lastSeen } = recentTabs[mid];
+    const { accessTime } = recentTabs[mid];
 
-    if (lastSeen === 0) {
+    if (accessTime === 0) {
       return [mid, recentTabs[mid]];
     }
 
-    if (lastSeen < 0) { // we're in the future, so we need to go left
+    if (accessTime > 0) { // we're in the future, so we need to go left
       end = mid - 1;
     } else { // we're in the past, so we need to go right
       start = mid + 1;
@@ -50,7 +50,7 @@ const main = async () => {
 
   // store current tab in recentTabs
   const { id: tabId, windowId } = await getCurrentTab();
-  recentTabs.push({ tabId, windowId, lastSeen: 0 });
+  recentTabs.push({ tabId, windowId, accessTime: 0 });
 
   // removes all instances of closed tab from recentTabs
   browser.tabs.onRemoved.addListener(async (tabId, { windowId }) => {
@@ -67,7 +67,7 @@ const main = async () => {
 
     // we remove all instances of closed tab from recentTabs
     //
-    // (we cannot do binary search because it's sorted by lastSeen, not tabId
+    // (we cannot do binary search because it's sorted by accessTime, not tabId
     //  or windowId)
     recentTabs = recentTabs.filter((tab) => !equals(tab, tabToRemove));
   });
@@ -81,29 +81,32 @@ const main = async () => {
       return;
     }
 
-    const tabToAdd = { tabId, windowId, lastSeen: 0 };
+    const tabToAdd = { tabId, windowId, accessTime: 0 };
     const [curIdx] = findCurrentTab();
 
-    // delete all future tabs because
-    // you cannot go back to the future once you've altered the past
-    if (curIdx !== recentTabs.length - 1) {
-      recentTabs.length = curIdx + 1;
-    }
-
-    // we want to remove any instances of the newly activate tab from our
-    // array because we'll append it to the end of the array later with
-    // lastSeen = 0
+    // we set any instances of the newly activated tab in our array to null
+    // because we'll soon add it to the array 1 index after curIdx with
+    // accessTime = 0
     //
-    // (we cannot do binary search because it's sorted by lastSeen, not tabId
+    // (we set the tabs to null instead of removing them outright because
+    //  it would mess with curIdx)
+    //
+    // (we cannot do binary search because it's sorted by accessTime, not tabId
     //  or windowId)
-    recentTabs = recentTabs.filter((tab) => !equals(tab, tabToAdd));
+    recentTabs = recentTabs.map((tab) => equals(tab, tabToAdd) ? null : tab);
 
-    // all tabs have aged by one
+    // all non-future tabs have aged by one
     for (const tab of recentTabs) {
-      tab.lastSeen++;
+      if (tab && tab.accessTime <= 0) {
+        tab.accessTime--;
+      }
     }
 
-    recentTabs.push(tabToAdd);
+    // we insert the newly activated tab between the past and future tabs
+    recentTabs.splice(curIdx + 1, 0, tabToAdd);
+
+    // remove nulls we added earlier
+    recentTabs = recentTabs.filter(Boolean);
 
     if (activationPromise) {
       // we tell the onRemoved listener that the onActivated listener has
@@ -127,12 +130,12 @@ const main = async () => {
     }
 
     if (newIdx !== undefined) {
-      const prevLastSeen = recentTabs[newIdx].lastSeen;
+      const prevLastSeen = recentTabs[newIdx].accessTime;
 
       // we center all tabs around the tab we've traversed in time to,
-      // setting this new tab to lastSeen = 0
+      // setting this new tab to accessTime = 0
       for (const tab of recentTabs) {
-        tab.lastSeen -= prevLastSeen;
+        tab.accessTime -= prevLastSeen;
       }
 
       // switch to the tab
