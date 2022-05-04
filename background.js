@@ -61,16 +61,11 @@ const main = async () => {
     // (we cannot do binary search because it's sorted by lastSeen, not tabId
     //  or windowId)
     recentTabs = recentTabs.filter((tab) => !equals(tab, tabToRemove));
-
-    console.log("onRemoved:", { recentTabs });
   });
 
   // adds tab to recentTabs on tab change
   browser.tabs.onActivated.addListener(
     ({ tabId, windowId }) => {
-      if (windowId !== 3) {
-        return;
-      }
       const tabToAdd = { tabId, windowId, lastSeen: 0 };
       if (isTraversingHistory) {
         return;
@@ -92,8 +87,6 @@ const main = async () => {
       }
 
       recentTabs.push(tabToAdd);
-
-      console.log("onActivated:", { recentTabs });
 
       if (activationPromise) {
         resolveActivationPromise();
@@ -120,8 +113,6 @@ const main = async () => {
         browser.tabs.update(recentTabs[newIdx].tabId, { active: true }),
       ]);
     }
-
-    console.log("onCommand:", { recentTabs });
 
     isTraversingHistory = false;
   });
