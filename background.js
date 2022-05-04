@@ -35,9 +35,9 @@ const findCurrentTab = () => {
       return [mid, recentTabs[mid]];
     }
 
-    if (lastSeen < 0) {
+    if (lastSeen < 0) { // we're in the future, so we need to go left
       end = mid - 1;
-    } else {
+    } else { // we're in the past, so we need to go right
       start = mid + 1;
     }
   }
