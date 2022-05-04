@@ -23,11 +23,13 @@ const findCurrentTab = () => {
   while (start <= end) {
     let mid = Math.floor((start + end) / 2);
 
-    if (recentTabs[mid].lastSeen === 0) {
+    const { lastSeen } = recentTabs[mid];
+
+    if (lastSeen === 0) {
       return [mid, recentTabs[mid]];
     }
 
-    if (recentTabs[mid].lastSeen < 0) {
+    if (lastSeen < 0) {
       end = mid - 1;
     } else {
       start = mid + 1;
