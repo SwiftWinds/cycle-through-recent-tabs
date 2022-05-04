@@ -51,7 +51,7 @@ const main = async () => {
     const tabToRemove = { tabId, windowId };
     const [, curTab] = findCurrentTab();
     if (equals(curTab, tabToRemove)) {
-      activationPromise = new Promise(function(resolve) {
+      activationPromise = new Promise((resolve) => {
         resolveActivationPromise = resolve;
       });
       await activationPromise;
