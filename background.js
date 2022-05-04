@@ -67,7 +67,7 @@ const main = async () => {
 
   // adds tab to recentTabs on tab change
   browser.tabs.onActivated.addListener(
-    async ({ tabId, windowId }) => {
+    ({ tabId, windowId }) => {
       if (windowId !== 3) {
         return;
       }
