@@ -1,4 +1,10 @@
 let isTraversingHistory = false;
+
+// a list of recent tabs
+// negative lastSeen mean tabs in the future (accessed via alt+shift+p)
+// positive lastSeen mean tabs in the past (accessed via alt+shift+o)
+// 0 means the current tab
+// the larger the lastSeen, the longer it's been since the tab was accessed
 let recentTabs = [];
 
 // we wait for onActivated listener to finish before executing the onRemoved listener
