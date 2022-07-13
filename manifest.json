@@ -1,8 +1,8 @@
 {
   "manifest_version": 2,
   "name": "Cycle through recent tabs",
-  "description": "Use alt+shift+o and alt+shift+p to go forward or back (based on how recently that tab was accessed)",
-  "version": "3.0.0",
+  "description": "Use keyboard shortcuts to go forward or back (based on how recently that tab was accessed)",
+  "version": "3.1.0",
   "icons": {
     "16": "icons/icon16.png",
     "19": "icons/icon19.png",
@@ -25,14 +25,14 @@
     "go-back": {
       "suggested_key": {
         "default": "Alt+Shift+O",
-        "linux": "Alt+Shift+O"
+        "mac": "MacCtrl+Command+O"
       },
       "description": "Go to previously visited tab"
     },
     "go-forward": {
       "suggested_key": {
         "default": "Alt+Shift+P",
-        "linux": "Alt+Shift+P"
+        "mac": "MacCtrl+Command+P"
       },
       "description": "Go to next visited tab"
     }
