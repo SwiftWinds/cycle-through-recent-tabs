@@ -149,3 +149,6 @@ Temporary Items
 
 # browser addon artifacts
 web-ext-artifacts/
+
+# zipped extension
+*.zip
