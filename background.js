@@ -84,6 +84,10 @@ const main = async () => {
     const tabToAdd = { tabId, windowId, accessTime: 0 };
     const [curIdx] = findCurrentTab();
 
+    // we remove all future tabs because modifying the past means you can no 
+    // longer access the future
+    recentTabs.length = curIdx + 1;
+
     // we set any instances of the newly activated tab in our array to null
     // because we'll soon add it to the array 1 index after curIdx with
     // accessTime = 0
@@ -95,15 +99,15 @@ const main = async () => {
     //  or windowId)
     recentTabs = recentTabs.map((tab) => equals(tab, tabToAdd) ? null : tab);
 
-    // all non-future tabs have aged by one
+    // all tabs have aged by one
     for (const tab of recentTabs) {
-      if (tab && tab.accessTime <= 0) {
+      if (tab) {
         tab.accessTime--;
       }
     }
 
-    // we insert the newly activated tab between the past and future tabs
-    recentTabs.splice(curIdx + 1, 0, tabToAdd);
+    // we append the newly activated tab at the end
+    recentTabs.push(tabToAdd);
 
     // remove nulls we added earlier
     recentTabs = recentTabs.filter(Boolean);
