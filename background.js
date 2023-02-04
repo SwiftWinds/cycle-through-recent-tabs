@@ -17,7 +17,7 @@ const getCurrentTab = async () => {
     active: true,
     windowId: browser.windows.WINDOW_ID_CURRENT,
   });
-  return browser.tabs.get(tabs[0].id);
+  return browser.tabs.get(tabs[0]?.id);
 };
 
 // binary search for current tab in recentTabs
