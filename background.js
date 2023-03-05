@@ -17,7 +17,8 @@ const getCurrentTab = async () => {
     active: true,
     windowId: browser.windows.WINDOW_ID_CURRENT,
   });
-  return browser.tabs.get(tabs[0]?.id);
+  const tabId = tabs[0]?.id;
+  return tabId && browser.tabs.get(tabId);
 };
 
 // binary search for current tab in recentTabs
@@ -120,7 +121,7 @@ const main = async () => {
     }
   });
 
-  // alt+shift+o or alt+shift+p was pressed. We traverse history
+  // ctrl+cmd+o or ctrl+cmd+p was pressed. We traverse history
   browser.commands.onCommand.addListener(async (command) => {
     isTraversingHistory = true;
     const [curIdx] = findCurrentTab();
@@ -142,6 +143,9 @@ const main = async () => {
         tab.accessTime -= prevLastSeen;
       }
 
+      console.log("recentTabs", recentTabs);
+      console.log("recentTabs[newIdx].windowId", recentTabs[newIdx].windowId);
+      console.log("recentTabs[newIdx].tabId", recentTabs[newIdx].tabId);
       // switch to the tab
       await Promise.all([
         browser.windows.update(recentTabs[newIdx].windowId, { focused: true }),
