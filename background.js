@@ -143,9 +143,6 @@ const main = async () => {
         tab.accessTime -= prevLastSeen;
       }
 
-      console.log("recentTabs", recentTabs);
-      console.log("recentTabs[newIdx].windowId", recentTabs[newIdx].windowId);
-      console.log("recentTabs[newIdx].tabId", recentTabs[newIdx].tabId);
       // switch to the tab
       await Promise.all([
         browser.windows.update(recentTabs[newIdx].windowId, { focused: true }),
