@@ -50,7 +50,7 @@ const equals = (a, b) => a.tabId === b.tabId && a.windowId === b.windowId;
 const main = async () => {
 
   // store current tab in recentTabs
-  const { id: tabId, windowId } = await getCurrentTab();
+  const { id: tabId, windowId } = await getCurrentTab() ?? {};
   recentTabs.push({ tabId, windowId, accessTime: 0 });
 
   // removes all instances of closed tab from recentTabs
