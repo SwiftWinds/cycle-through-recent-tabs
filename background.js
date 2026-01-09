@@ -22,13 +22,9 @@ const setState = async (updates) => {
 	await chrome.storage.session.set(updates);
 };
 
-const getCurrentTab = async () => {
-	const tabs = await chrome.tabs.query({
-		active: true,
-		currentWindow: true,
-	});
-	const tabId = tabs[0]?.id;
-	return tabId ? await chrome.tabs.get(tabId) : null;
+const getActiveTab = async () => {
+	const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+	return tabs[0] ?? null;
 };
 
 // binary search for current tab in recentTabs
@@ -58,44 +54,8 @@ const findCurrentTab = (recentTabs) => {
 
 const equals = (a, b) => a?.tabId === b?.tabId && a?.windowId === b?.windowId;
 
-// Initialize on service worker startup
-const initialize = async () => {
-	const { recentTabs } = await getState();
-
-	// Only initialize if we don't have any tabs stored
-	if (recentTabs.length === 0) {
-		const currentTab = await getCurrentTab();
-		if (currentTab) {
-			const { id: tabId, windowId } = currentTab;
-			await setState({ recentTabs: [{ tabId, windowId, accessTime: 0 }] });
-		}
-	}
-};
-
-// removes all instances of closed tab from recentTabs
-chrome.tabs.onRemoved.addListener(async (tabId, { windowId }) => {
-	const tabToRemove = { tabId, windowId };
-	let { recentTabs } = await getState();
-
-	const [, curTab] = findCurrentTab(recentTabs);
-
-	// If the removed tab was the current tab, wait a bit for onActivated to fire
-	if (equals(curTab, tabToRemove)) {
-		// Small delay to let onActivated process first
-		await new Promise((resolve) => setTimeout(resolve, 50));
-		// Re-fetch state after the delay
-		({ recentTabs } = await getState());
-	}
-
-	// Remove all instances of closed tab from recentTabs
-	// (Note: we cannot do find with binary search because recentTabs is sorted by accessTime,
-	//  and we're searching by tabId and windowId)
-	recentTabs = recentTabs.filter((tab) => !equals(tab, tabToRemove));
-	await setState({ recentTabs });
-});
-
-// adds tab to recentTabs on tab change
-chrome.tabs.onActivated.addListener(async ({ tabId, windowId }) => {
+// Shared logic for handling tab activation (used by both onActivated and onFocusChanged)
+const handleTabActivation = async (tabId, windowId) => {
 	const { recentTabs: currentTabs, isTraversingHistory } = await getState();
 
 	// The tab switch occurred as a result of this extension's action
@@ -107,7 +67,12 @@ chrome.tabs.onActivated.addListener(async ({ tabId, windowId }) => {
 
 	let recentTabs = [...currentTabs];
 	const tabToAdd = { tabId, windowId, accessTime: 0 };
-	const [curIdx] = findCurrentTab(recentTabs);
+	const [curIdx, curTab] = findCurrentTab(recentTabs);
+
+	// If this is already the current tab, do nothing
+	if (equals(curTab, tabToAdd)) {
+		return;
+	}
 
 	// If no current tab found (e.g., first activation), just add the tab
 	if (curIdx === -1) {
@@ -138,6 +103,61 @@ chrome.tabs.onActivated.addListener(async ({ tabId, windowId }) => {
 	recentTabs.push(tabToAdd);
 
 	await setState({ recentTabs });
+};
+
+// Initialize on service worker startup
+const initialize = async () => {
+	const { recentTabs } = await getState();
+
+	// Only initialize if we don't have any tabs stored
+	if (recentTabs.length === 0) {
+		const tab = await getActiveTab();
+		if (tab) {
+			await setState({ recentTabs: [{ tabId: tab.id, windowId: tab.windowId, accessTime: 0 }] });
+		}
+	}
+};
+
+// removes all instances of closed tab from recentTabs
+chrome.tabs.onRemoved.addListener(async (tabId, { windowId }) => {
+	const tabToRemove = { tabId, windowId };
+	let { recentTabs } = await getState();
+
+	const [, curTab] = findCurrentTab(recentTabs);
+
+	// If the removed tab was the current tab, wait a bit for onActivated to fire
+  // This is important because awaits between onRemoved and onActivated could get interleaved,
+  // causing the slower function to setState based on stale initial state
+	if (equals(curTab, tabToRemove)) {
+		// Small delay to let onActivated process first
+		await new Promise((resolve) => setTimeout(resolve, 50));
+		// Re-fetch state after the delay
+		({ recentTabs } = await getState());
+	}
+
+	// Remove all instances of closed tab from recentTabs
+	// (Note: we cannot do find with binary search because recentTabs is sorted by accessTime,
+	//  and we're searching by tabId and windowId)
+	recentTabs = recentTabs.filter((tab) => !equals(tab, tabToRemove));
+	await setState({ recentTabs });
+});
+
+// adds tab to recentTabs on tab change
+chrome.tabs.onActivated.addListener(async ({ tabId, windowId }) => {
+	await handleTabActivation(tabId, windowId);
+});
+
+// handles window focus change (e.g., Cmd+` to switch windows)
+chrome.windows.onFocusChanged.addListener(async (windowId) => {
+	// WINDOW_ID_NONE means all Chrome windows lost focus (e.g., switched to another app)
+	if (windowId === chrome.windows.WINDOW_ID_NONE) {
+		return;
+	}
+
+	const tab = await getActiveTab();
+	if (tab) {
+		await handleTabActivation(tab.id, tab.windowId);
+	}
 });
 
 // ctrl+cmd+o or ctrl+cmd+p was pressed. We traverse history
