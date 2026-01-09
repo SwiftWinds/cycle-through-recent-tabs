@@ -1,8 +1,8 @@
 {
-  "manifest_version": 2,
+  "manifest_version": 3,
   "name": "Cycle through recent tabs",
   "description": "Use keyboard shortcuts to go forward or back (based on how recently that tab was accessed)",
-  "version": "3.1.0",
+  "version": "3.2.0",
   "icons": {
     "16": "icons/icon16.png",
     "19": "icons/icon19.png",
@@ -15,11 +15,7 @@
     "storage"
   ],
   "background": {
-    "scripts": [
-      "lib/browser-polyfill.js",
-      "background.js"
-    ],
-    "persistent": true
+    "service_worker": "background.js"
   },
   "commands": {
     "go-back": {
